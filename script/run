@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$script_dir/.."
+
+set -euo pipefail
+
+exe_name=$0
+
+cargo_args=("--package" "cosmos_driver")
+language=
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  shift
+  case "$key" in
+    --help)
+      echo "Usage: $exe_name <language> [--raw-value]"
+      exit 0
+      ;;
+    --raw-value)
+      cargo_args+=("--features" "raw_value")
+      ;;
+    *)
+      language=$key
+      ;;
+  esac
+done
+
+if [ -z "$language" ]; then
+  echo "Language not specified. Usage: $exe_name <language> [--raw-value]"
+  exit 1
+fi
+
+case "$language" in
+    "go")
+        ;;
+    *)
+        echo "Unsupported language: $language"
+        exit 1
+        ;;
+esac
+
+echo "Building rust driver in $language mode..."
+cargo build --package cosmos_driver --features $language "${cargo_args[@]}"
+
+case "$language" in
+    "go")
+        echo "Running Go sample..."
+        go -C ./go_consumer run .
+        ;;
+esac

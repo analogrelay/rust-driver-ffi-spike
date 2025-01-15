@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"testing"
+	"time"
 
 	"github.com/analogrelay/go-rust-interop/go_consumer/pipeline"
 )
@@ -16,7 +16,7 @@ func generateDeepJSON(depth int) string {
 	}
 	var builder strings.Builder
 	builder.WriteString("[")
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 2; i++ {
 		if i != 0 {
 			builder.WriteString(",")
 		}
@@ -33,25 +33,27 @@ func createItems(partitionId int, count int, startId int) ([]byte, error) {
 		item := map[string]interface{}{
 			"order": order + 1,
 			"payload": Item{
-				id:       fmt.Sprint(startId + i),
-				title:    fmt.Sprintf("Partition %d / Item %d / Order %d", partitionId, i, order+1),
-				hugeData: json.RawMessage(generateDeepJSON(7)),
+				Id:       fmt.Sprint(startId + i),
+				Title:    fmt.Sprintf("Partition %d / Item %d / Order %d", partitionId, i, order+1),
+				HugeData: json.RawMessage(generateDeepJSON(2)),
 			},
 		}
 		items[i] = item
 
 		order = (order % 2) + 1
 	}
-	return json.Marshal(items)
+	j, _ := json.Marshal(items)
+	fmt.Println(string(j))
+	return j, nil
 }
 
 type Item struct {
-	id       string
-	title    string
-	hugeData json.RawMessage
+	Id       string          `json:"id"`
+	Title    string          `json:"title"`
+	HugeData json.RawMessage `json:"huge_data"`
 }
 
-func BenchmarkPipeline(b *testing.B) {
+func main() {
 	partitions := []string{
 		"p1",
 		"p2",
@@ -65,24 +67,30 @@ func BenchmarkPipeline(b *testing.B) {
 		data[partitions[idx]] = item
 	}
 
-	for i := 0; i < b.N; i++ {
-		pipeline, err := pipeline.NewPipeline[map[string]Item](partitions)
+	fmt.Println("Go: Creating pipeline")
+	pipeline, err := pipeline.NewPipeline[Item](partitions)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		fmt.Println("Go: Freeing pipeline")
+		pipeline.Free()
+	}()
+
+	for _, partition := range partitions {
+		start := time.Now()
+		err = pipeline.EnqueueData(partition, data[partition])
+		fmt.Println("Go: Enqueued data for partition", partition, "in", time.Since(start))
 		if err != nil {
 			panic(err)
 		}
-		defer pipeline.Free()
+	}
 
-		for _, partition := range partitions {
-			err = pipeline.EnqueueData(partition, data[partition])
-			if err != nil {
-				panic(err)
-			}
+	fmt.Println("Go: Iterating pipeline")
+	for item, err := range pipeline.Iter() {
+		if err != nil {
+			panic(err)
 		}
-
-		for _, err := range pipeline.Iter() {
-			if err != nil {
-				panic(err)
-			}
-		}
+		fmt.Println("Go: Received Item", item.Title)
 	}
 }

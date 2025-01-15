@@ -27,6 +27,7 @@ struct PartitionState {
     buffer: VecDeque<PipelineItem>,
 }
 
+#[allow(dead_code)]
 enum ReadStrategy {
     RoundRobin { next: usize },
     Ordered,

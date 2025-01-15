@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"iter"
 	"runtime"
+	"time"
 	"unsafe"
 )
 
@@ -112,7 +113,9 @@ func (p *Pipeline[T]) Iter() iter.Seq2[*T, error] {
 }
 
 func (p *Pipeline[T]) Next() (*T, error, bool) {
+	start := time.Now()
 	result := C.pipeline_next_item_raw(p.ptr)
+	fmt.Println("Go: pipeline_next_item_raw took", time.Since(start))
 	switch result.code {
 	case RESULT_SUCCESS:
 		var t T
