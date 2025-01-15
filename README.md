@@ -35,6 +35,7 @@ For example, this is a `2 by 2` object:
         }
     ]
 }
+```
 
 ### Using `serde_json::value::RawValue` can avoid parsing large user payloads
 
