@@ -1,0 +1,22 @@
+[package]
+name = "cosmos_driver"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
+thiserror = "2.0.11"
+
+[build-dependencies]
+cbindgen = "0.27.0"
+
+[features]
+go = [ "c_api" ]
+c_api = []
+
+# Uses serde_json::value::RawValue to represent the payload. This prevents parsing the payload and carries it as a simple raw string.
+raw_value = [ "serde_json/raw_value" ]
